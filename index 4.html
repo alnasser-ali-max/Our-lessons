@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>دفتر دروس الحياة - ناصر وأسماء</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, getDoc, updateDoc, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDO3Frq2GtDLoAqz5qVVyRFVTloaLouorE",
+    authDomain: "our-life-e3119.firebaseapp.com",
+    projectId: "our-life-e3119",
+    storageBucket: "our-life-e3119.firebasestorage.app",
+    messagingSenderId: "125349964984",
+    appId: "1:125349964984:web:28ab2fbe274bf4b351984d",
+    measurementId: "G-24MRGKYJQC"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const lessonsCol = collection(db, "lessons");
+  const commentsCol = collection(db, "comments");
+
+  window.fbSave = async (data) => {
+    try { await addDoc(lessonsCol, data); return true; } 
+    catch (e) { return false; }
+  };
+
+  window.fbDelete = async (id) => {
+    try { await deleteDoc(doc(db, "lessons", id)); return true; }
+    catch (e) { return false; }
+  };
+
+  window.fbListen = (callback) => {
+    onSnapshot(lessonsCol, (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      callback(data);
+    }, (err) => { console.error('lessons error:', err); callback([]); });
+  };
+
+  window.fbSaveComment = async (data) => {
+    try {
+      await addDoc(commentsCol, data);
+      const lessonRef = doc(db, "lessons", data.lessonId);
+      const snap = await getDoc(lessonRef);
+      if (snap.exists()) {
+        await updateDoc(lessonRef, { commentCount: (snap.data().commentCount || 0) + 1 });
+      }
+      return true;
+    } catch (e) { console.error(e); return false; }
+  };
+
+  window.fbDeleteComment = async (id, lessonId) => {
+    try {
+      await deleteDoc(doc(db, "comments", id));
+      if (lessonId) {
+        const lessonRef = doc(db, "lessons", lessonId);
+        const snap = await getDoc(lessonRef);
+        if (snap.exists()) {
+          await updateDoc(lessonRef, { commentCount: Math.max(0, (snap.data().commentCount || 0) - 1) });
+        }
+      }
+      return true;
+    } catch (e) { console.error(e); return false; }
+  };
+
+  window.fbListenAllCommentCounts = (callback) => {
+    return onSnapshot(commentsCol, (snapshot) => {
+      const counts = {};
+      snapshot.docs.forEach(d => {
+        const lessonId = d.data().lessonId;
+        if (lessonId) counts[lessonId] = (counts[lessonId] || 0) + 1;
+      });
+      callback(counts);
+    }, (err) => {
+      console.error("commentCounts error:", err);
+      callback({});
+    });
+  };
+
+  const reviewsCol = collection(db, "reviews");
+
+  window.fbSaveReview = async (data) => {
+    try { await addDoc(reviewsCol, data); return true; }
+    catch (e) { console.error(e); return false; }
+  };
+
+  window.fbListenReviews = (callback) => {
+    return onSnapshot(reviewsCol, (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      callback(data);
+    }, (err) => { console.error('reviews error:', err); callback([]); });
+  };
+
+  window.fbListenComments = (lessonId, callback) => {
+    return onSnapshot(commentsCol, async (snapshot) => {
+      const all = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const filtered = all.filter(c => c.lessonId === lessonId);
+      filtered.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+      try {
+        const lessonRef = doc(db, "lessons", lessonId);
+        const snap = await getDoc(lessonRef);
+        if (snap.exists() && snap.data().commentCount !== filtered.length) {
+          await updateDoc(lessonRef, { commentCount: filtered.length });
+        }
+      } catch(e) {}
+      callback(filtered);
+    }, (err) => {
+      console.error("Comments error:", err);
+      callback([]);
+    });
+  };
+</script>
+
+<style>
+  :root {
+    --bg: #f8f5ff;
+    --surface: rgba(255,255,255,0.90);
+    --surface-solid: #ffffff;
+    --surface2: rgba(250,247,255,0.97);
+    --border: rgba(120,80,180,0.10);
+    --border2: rgba(120,80,180,0.06);
+    --text: #17101f;
+    --text-secondary: #3d2b52;
+    --text-muted: #9b88b0;
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --accent-light: rgba(124,58,237,0.09);
+    --accent-mid: rgba(124,58,237,0.20);
+    --accent-glow: rgba(124,58,237,0.06);
+    --pink: #ec4899;
+    --pink-light: rgba(236,72,153,0.10);
+    --gold: #f59e0b;
+    --gold-light: rgba(245,158,11,0.12);
+    --red: #f43f5e;
+    --radius: 18px;
+    --radius-sm: 11px;
+    --radius-lg: 24px;
+    --shadow-sm: 0 2px 10px rgba(124,58,237,0.06);
+    --shadow: 0 6px 24px rgba(124,58,237,0.10);
+    --shadow-lg: 0 12px 48px rgba(124,58,237,0.14);
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --ease-in-out: cubic-bezier(0.42, 0, 0.58, 1);
+
+    --c-work:#6366f1; --c-family:#ec4899; --c-health:#10b981;
+    --c-religion:#8b5cf6; --c-social:#f97316; --c-finance:#0ea5e9;
+    --c-self:#d946ef; --c-wisdom:#f59e0b;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    font-family:'Tajawal', sans-serif;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 85% 0%, rgba(168,85,247,0.13) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 5% 100%, rgba(236,72,153,0.09) 0%, transparent 55%),
+      radial-gradient(ellipse 50% 30% at 50% 50%, rgba(124,58,237,0.04) 0%, transparent 70%);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Noise texture overlay ─── */
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    opacity: 0.4;
+  }
+
+  /* ─── AUTH SCREEN ─── */
+  #auth-screen {
+    min-height: 100vh; display:flex; align-items:center; justify-content:center;
+    padding:20px; position:relative;
+    background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(124,58,237,0.20) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 40% at 90% 90%, rgba(236,72,153,0.12) 0%, transparent 60%),
+                linear-gradient(160deg, #f0ebff 0%, #f8f5ff 50%, #fff0f8 100%);
+  }
+
+  .auth-ambient {
+    position:absolute; inset:0; overflow:hidden; pointer-events:none;
+  }
+  .auth-orb {
+    position:absolute; border-radius:50%; filter:blur(60px); opacity:0.35;
+    animation: orbFloat 8s ease-in-out infinite alternate;
+  }
+  .auth-orb:nth-child(1) { width:320px; height:320px; top:-80px; right:-60px; background:radial-gradient(circle, rgba(124,58,237,0.50), transparent); }
+  .auth-orb:nth-child(2) { width:220px; height:220px; bottom:40px; left:-40px; background:radial-gradient(circle, rgba(236,72,153,0.40), transparent); animation-delay:-3s; }
+  .auth-orb:nth-child(3) { width:160px; height:160px; top:40%; left:20%; background:radial-gradient(circle, rgba(168,85,247,0.30), transparent); animation-delay:-5s; }
+  @keyframes orbFloat { from{transform:translate(0,0) scale(1)} to{transform:translate(20px,30px) scale(1.1)} }
+
+  .auth-card {
+    background: rgba(255,255,255,0.82);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border-radius:32px;
+    padding: 48px 38px;
+    width:100%; max-width:390px;
+    box-shadow: 0 2px 0 rgba(255,255,255,0.9) inset, 0 20px 70px rgba(0,0,0,0.11), 0 0 0 1px rgba(255,255,255,0.65);
+    position:relative; z-index:1;
+    animation: authCardIn 0.7s var(--spring) both;
+  }
+  @keyframes authCardIn { from{opacity:0; transform:translateY(30px) scale(0.95)} to{opacity:1; transform:none} }
+
+  .auth-logo {
+    text-align:center; margin-bottom:32px;
+  }
+  .auth-logo .icon-wrap {
+    width:84px; height:84px; background:linear-gradient(135deg, #7c3aed, #a855f7); border-radius:26px;
+    display:flex; align-items:center; justify-content:center;
+    margin:0 auto 18px; font-size:38px;
+    box-shadow: 0 8px 28px rgba(124,58,237,0.45), 0 2px 4px rgba(0,0,0,0.12);
+    animation: iconBounce 0.8s var(--spring) 0.2s both;
+    position:relative; overflow:hidden;
+  }
+  .auth-logo .icon-wrap::after {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%);
+  }
+  @keyframes iconBounce { from{opacity:0; transform:scale(0.5) rotate(-10deg)} to{opacity:1; transform:none} }
+  .auth-logo h1 { font-family:'Amiri'; font-size:23px; color:var(--accent); font-weight:700; letter-spacing:0.3px; }
+  .auth-logo p { font-size:13px; color:var(--text-muted); margin-top:5px; letter-spacing:0.2px; }
+
+  .form-group { margin-bottom:14px; }
+  .form-group label { display:block; font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:6px; text-align:right; letter-spacing:0.3px; }
+  .form-group input {
+    width:100%; background:rgba(255,255,255,0.7); border:1.5px solid rgba(0,0,0,0.1);
+    border-radius:12px; padding:13px 15px; font-family:inherit; font-size:15px;
+    outline:none; text-align:right; transition:all 0.25s var(--ease-out);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05) inset;
+    -webkit-appearance:none;
+  }
+  .form-group input:focus {
+    border-color:var(--accent); background:white;
+    box-shadow: 0 0 0 4px rgba(124,58,237,0.09), 0 1px 3px rgba(0,0,0,0.05) inset;
+    transform: translateY(-1px);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 60%, #c084fc 100%);
+    color:white; border:none; border-radius:15px;
+    padding:15px; width:100%; cursor:pointer; font-weight:700;
+    font-size:16px; font-family:inherit;
+    box-shadow: 0 5px 20px rgba(124,58,237,0.45), 0 1px 0 rgba(255,255,255,0.2) inset;
+    transition:all 0.2s var(--ease-out);
+    position:relative; overflow:hidden; margin-top:6px;
+    letter-spacing:0.3px;
+  }
+  .btn-primary::after {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%);
+  }
+  .btn-primary:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(124,58,237,0.50); }
+  .btn-primary:active { transform:translateY(0) scale(0.98); }
+
+  /* ─── APP SHELL ─── */
+  #app { display:none; }
+
+  /* ─── HEADER ─── */
+  .header {
+    background:rgba(255,255,255,0.82);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border-bottom:1px solid rgba(124,58,237,0.10);
+    padding: 0 20px; height:60px;
+    display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:100;
+    animation: headerSlideDown 0.5s var(--ease-out) both;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.7) inset, 0 2px 16px rgba(124,58,237,0.07);
+  }
+  @keyframes headerSlideDown { from{opacity:0; transform:translateY(-100%)} to{opacity:1; transform:none} }
+  .header-title { font-family:'Amiri'; font-weight:700; color:var(--accent); font-size:17px; }
+  .header-user {
+    display:flex; align-items:center; gap:8px;
+    background:linear-gradient(135deg, rgba(124,58,237,0.09), rgba(168,85,247,0.07));
+    border:1px solid rgba(124,58,237,0.13);
+    border-radius:20px; padding:5px 10px 5px 14px;
+  }
+  .header-user-name { font-size:13px; font-weight:700; color:var(--accent); }
+  .header-avatar {
+    width:28px; height:28px; background:linear-gradient(135deg, #7c3aed, #a855f7); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; color:white; font-weight:700;
+    box-shadow: 0 2px 8px rgba(124,58,237,0.40);
+  }
+  .btn-logout {
+    background:none; border:none; color:var(--text-muted); font-size:20px;
+    cursor:pointer; padding:4px; transition:all 0.2s; border-radius:8px;
+    margin-right:4px;
+  }
+  .btn-logout:hover { color:var(--red); background:rgba(255,59,48,0.08); }
+
+  /* ─── NAV TABS ─── */
+  .nav-wrap {
+    background:rgba(255,255,255,0.72);
+    backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    border-bottom:1px solid var(--border);
+    padding:0 20px;
+    animation: headerSlideDown 0.5s var(--ease-out) 0.05s both;
+  }
+  .nav-tabs { display:flex; gap:4px; }
+  .nav-tab {
+    background:none; border:none; border-bottom:2.5px solid transparent;
+    padding:14px 16px; font-family:inherit; font-weight:600; font-size:14px;
+    cursor:pointer; color:var(--text-muted);
+    transition:all 0.25s var(--ease-out); position:relative;
+  }
+  .nav-tab.active { color:var(--accent2); border-bottom-color:var(--accent2); }
+  .nav-tab:hover:not(.active) { color:var(--text-secondary); }
+
+  /* ─── PAGES ─── */
+  .page { display:none; padding:16px 16px 30px; max-width:700px; margin:auto; }
+  .page.active { display:block; }
+  .page-enter { animation: pageIn 0.4s var(--ease-out) both; }
+  .page-exit { animation: pageOut 0.25s var(--ease-in-out) both; }
+  @keyframes pageIn { from{opacity:0; transform:translateY(12px)} to{opacity:1; transform:none} }
+  @keyframes pageOut { from{opacity:1; transform:none} to{opacity:0; transform:translateY(-8px)} }
+
+  /* ─── CATEGORY CHIPS ─── */
+  .cat-scroll-wrap {
+    margin: 0 -16px; padding: 0 16px;
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .cat-scroll-wrap::-webkit-scrollbar { display:none; }
+  .cat-chips {
+    display:flex; gap:8px; padding:16px 0;
+    width: max-content;
+  }
+  .cat-chip {
+    display:flex; align-items:center; gap:6px;
+    background:var(--surface-solid); border:1.5px solid var(--border);
+    border-radius:20px; padding:7px 14px;
+    font-family:inherit; font-size:13px; font-weight:500;
+    cursor:pointer; white-space:nowrap; transition:all 0.25s var(--spring);
+    box-shadow:var(--shadow-sm);
+  }
+  .cat-chip:active { transform:scale(0.95); }
+  .cat-chip.active {
+    background:linear-gradient(135deg, #7c3aed, #a855f7); color:white; border-color:transparent;
+    box-shadow:0 4px 16px rgba(124,58,237,0.40);
+    transform:scale(1.03);
+  }
+  .cat-chip .chip-count {
+    background:rgba(0,0,0,0.1); border-radius:10px; padding:1px 7px;
+    font-size:11px; font-weight:700; min-width:20px; text-align:center;
+  }
+  .cat-chip.active .chip-count { background:rgba(255,255,255,0.25); }
+
+  /* ─── ADD CARD ─── */
+  .add-card {
+    background:linear-gradient(160deg, #ffffff 60%, rgba(124,58,237,0.03) 100%);
+    border:1px solid rgba(124,58,237,0.10);
+    border-radius:var(--radius-lg); padding:18px;
+    margin-bottom:18px;
+    box-shadow: var(--shadow);
+    animation: cardReveal 0.4s var(--ease-out) 0.1s both;
+  }
+  @keyframes cardReveal { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none} }
+
+  .add-card-header {
+    display:flex; align-items:center; gap:10px; margin-bottom:14px;
+  }
+  .add-card-icon {
+    width:36px; height:36px; background:var(--accent-light);
+    border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px;
+  }
+  .add-card-title { font-weight:700; font-size:15px; color:var(--accent); }
+
+  .styled-select {
+    width:100%; padding:11px 14px; margin-bottom:12px;
+    border:1.5px solid var(--border); border-radius:12px;
+    background:var(--surface2); font-family:inherit; font-size:14px;
+    outline:none; text-align:right; appearance:none; cursor:pointer;
+    transition:border-color 0.2s, box-shadow 0.2s;
+    background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%238e8e93' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:left 14px center;
+    padding-left:32px;
+  }
+  .styled-select:focus { border-color:var(--accent); box-shadow:0 0 0 4px rgba(124,58,237,0.09); }
+
+  .styled-textarea {
+    width:100%; padding:13px 14px; border:1.5px solid var(--border);
+    border-radius:12px; font-family:inherit; font-size:15px; line-height:1.6;
+    outline:none; resize:none; background:var(--surface2);
+    transition:all 0.25s var(--ease-out); text-align:right;
+    -webkit-appearance:none;
+  }
+  .styled-textarea:focus {
+    border-color:var(--accent); background:white;
+    box-shadow:0 0 0 4px rgba(124,58,237,0.09);
+    transform:translateY(-1px);
+  }
+
+  .char-count { text-align:left; font-size:11px; color:var(--text-muted); margin-top:4px; }
+
+  .btn-save {
+    width:100%; margin-top:12px;
+    background:linear-gradient(135deg, #7c3aed 0%, #a855f7 60%, #c084fc 100%);
+    color:white; border:none; border-radius:13px; padding:14px;
+    font-family:inherit; font-weight:700; font-size:15px; cursor:pointer;
+    box-shadow:0 5px 20px rgba(124,58,237,0.42), 0 1px 0 rgba(255,255,255,0.15) inset;
+    transition:all 0.2s var(--spring); position:relative; overflow:hidden;
+    letter-spacing:0.2px;
+  }
+  .btn-save::after { content:''; position:absolute; inset:0; background:linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%); }
+  .btn-save:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 24px rgba(124,58,237,0.48); }
+  .btn-save:active:not(:disabled) { transform:scale(0.98); }
+  .btn-save:disabled { opacity:0.5; cursor:default; }
+
+  /* ─── SEARCH ─── */
+  .search-wrap { position:relative; margin-bottom:14px; }
+  .search-wrap input {
+    width:100%; padding:12px 16px 12px 40px;
+    background:var(--surface-solid); border:1.5px solid var(--border);
+    border-radius:13px; font-family:inherit; font-size:14px; outline:none;
+    text-align:right; transition:all 0.25s var(--ease-out);
+    box-shadow:var(--shadow-sm);
+    -webkit-appearance:none;
+  }
+  .search-wrap input:focus {
+    border-color:var(--accent); box-shadow:0 0 0 4px rgba(124,58,237,0.09);
+  }
+  .search-icon {
+    position:absolute; left:14px; top:50%; transform:translateY(-50%);
+    font-size:16px; pointer-events:none; opacity:0.5;
+  }
+
+  /* ─── LESSON CARDS ─── */
+  #lessons-list { display:flex; flex-direction:column; gap:10px; }
+
+  .lesson-card {
+    background:var(--surface-solid); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px;
+    box-shadow:var(--shadow-sm); position:relative; overflow:hidden;
+    cursor:default;
+    transition:all 0.3s var(--ease-out);
+    animation: lessonIn 0.4s var(--ease-out) both;
+  }
+  .lesson-card:hover {
+    transform:translateY(-3px); box-shadow:0 8px 28px rgba(124,58,237,0.10);
+    border-color:rgba(124,58,237,0.18);
+  }
+  .lesson-card-accent {
+    position:absolute; right:0; top:0; bottom:0; width:4px;
+    border-radius:0;
+  }
+  @keyframes lessonIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
+
+  .lesson-text { font-size:15px; line-height:1.7; padding-right:12px; color:var(--text); }
+
+  .lesson-footer {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top:12px; padding-top:12px; border-top:1px solid var(--border2);
+  }
+  .lesson-tags { display:flex; align-items:center; gap:8px; }
+  .cat-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    padding:3px 10px; border-radius:8px; font-size:11px; font-weight:600;
+    background:var(--badge-bg); color:var(--badge-color);
+  }
+  .author-badge {
+    font-size:11px; color:var(--text-muted); font-weight:500;
+    display:flex; align-items:center; gap:4px;
+  }
+  .author-dot { width:5px; height:5px; border-radius:50%; background:var(--accent); display:inline-block; }
+  .lesson-date { font-size:11px; color:var(--text-muted); }
+  .lesson-actions { display:flex; align-items:center; gap:6px; }
+  .btn-del {
+    width:28px; height:28px; background:rgba(255,59,48,0.08); color:var(--red);
+    border:none; border-radius:8px; cursor:pointer; font-size:13px;
+    display:flex; align-items:center; justify-content:center;
+    transition:all 0.2s var(--spring); flex-shrink:0;
+  }
+  .btn-del:hover { background:rgba(255,59,48,0.15); transform:scale(1.1); }
+  .btn-del:active { transform:scale(0.9); }
+
+  .empty-state {
+    text-align:center; padding:50px 20px; color:var(--text-muted);
+    animation:pageIn 0.4s var(--ease-out) both;
+  }
+  .empty-state .empty-icon { font-size:48px; margin-bottom:12px; filter:grayscale(30%); }
+  .empty-state h3 { font-size:18px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; }
+
+  /* ─── STATS PAGE ─── */
+  .stats-hero {
+    background:linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #ec4899 100%);
+    border-radius:var(--radius-lg); padding:24px;
+    margin-bottom:14px; color:white; position:relative; overflow:hidden;
+    box-shadow:0 10px 40px rgba(124,58,237,0.45);
+    animation: cardReveal 0.4s var(--ease-out) both;
+  }
+  .stats-hero::before {
+    content:''; position:absolute; top:-30px; left:-30px; width:150px; height:150px;
+    border-radius:50%; background:rgba(255,255,255,0.08);
+  }
+  .stats-hero::after {
+    content:''; position:absolute; bottom:-20px; right:-20px; width:100px; height:100px;
+    border-radius:50%; background:rgba(255,255,255,0.06);
+  }
+  .stats-hero-nums { display:flex; gap:20px; margin-top:16px; position:relative; z-index:1; }
+  .stats-num-block { flex:1; }
+  .stats-num { font-size:38px; font-weight:900; line-height:1; }
+  .stats-num-label { font-size:12px; opacity:0.75; margin-top:3px; }
+  .stats-greeting { font-size:14px; opacity:0.85; position:relative; z-index:1; }
+  .stats-title-hero { font-family:'Amiri'; font-size:20px; font-weight:700; margin-bottom:4px; position:relative; z-index:1; }
+
+  .stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .stat-card {
+    background:var(--surface-solid); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px; box-shadow:var(--shadow-sm);
+    animation: cardReveal 0.4s var(--ease-out) var(--delay, 0.1s) both;
+  }
+  .stat-card-icon { font-size:24px; margin-bottom:8px; }
+  .stat-card-num { font-size:28px; font-weight:900; color:var(--accent); }
+  .stat-card-label { font-size:12px; color:var(--text-muted); }
+
+  .cat-breakdown { margin-top:4px; }
+  .cat-breakdown h3 { font-size:15px; font-weight:700; margin-bottom:12px; color:var(--text-secondary); }
+  .cat-bar-item {
+    background:var(--surface-solid); border:1px solid var(--border);
+    border-radius:var(--radius); padding:13px 14px; margin-bottom:8px;
+    box-shadow:var(--shadow-sm);
+    animation: cardReveal 0.4s var(--ease-out) var(--delay, 0s) both;
+  }
+  .cat-bar-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .cat-bar-label { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; }
+  .cat-bar-count { font-size:13px; font-weight:700; color:var(--text-muted); }
+  .cat-bar-track {
+    height:6px; background:var(--border); border-radius:3px; overflow:hidden;
+  }
+  .cat-bar-fill {
+    height:100%; border-radius:3px;
+    transition:width 0.8s var(--ease-out);
+    animation: barFill 0.8s var(--ease-out) var(--bar-delay, 0.3s) both;
+  }
+  @keyframes barFill { from{width:0 !important} }
+
+  /* ─── QUOTE OF THE DAY ─── */
+  .daily-quote {
+    background:linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(236,72,153,0.05) 100%);
+    border:1px solid rgba(124,58,237,0.12);
+    border-radius:var(--radius); padding:20px 18px; margin-bottom:14px;
+    font-family:'Amiri'; font-size:17px; line-height:1.9; color:var(--accent);
+    text-align:center; animation: cardReveal 0.4s var(--ease-out) 0.05s both;
+    position:relative; overflow:hidden;
+    box-shadow: 0 2px 16px rgba(124,58,237,0.07);
+  }
+  .daily-quote::before {
+    content:'"';
+    position:absolute; top:-8px; right:12px;
+    font-family:'Amiri'; font-size:80px; color:rgba(124,58,237,0.08);
+    line-height:1; pointer-events:none;
+  }
+  .daily-quote-label {
+    font-family:'Tajawal'; font-size:10px; color:var(--pink);
+    margin-bottom:8px; letter-spacing:1.5px; font-weight:700; text-transform:uppercase;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .daily-quote-label::before, .daily-quote-label::after {
+    content:''; flex:1; max-width:30px; height:1px; background:var(--pink); opacity:0.4;
+  }
+
+  /* ─── RECENT ACTIVITY ─── */
+  .recent-section { margin-top:4px; }
+  .recent-section h3 { font-size:15px; font-weight:700; margin-bottom:12px; color:var(--text-secondary); }
+  .recent-item {
+    display:flex; align-items:flex-start; gap:10px;
+    padding:10px 0; border-bottom:1px solid var(--border2);
+  }
+  .recent-item:last-child { border-bottom:none; }
+  .recent-dot { width:8px; height:8px; border-radius:50%; margin-top:5px; flex-shrink:0; }
+  .recent-text { font-size:13px; color:var(--text-secondary); line-height:1.5; flex:1; }
+  .recent-meta { font-size:11px; color:var(--text-muted); white-space:nowrap; }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position:fixed; bottom:30px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:rgba(28,28,30,0.85); backdrop-filter:blur(20px);
+    color:white; padding:12px 22px; border-radius:20px;
+    opacity:0; transition:all 0.35s var(--spring); z-index:9999;
+    font-size:14px; font-weight:600; pointer-events:none;
+    box-shadow:0 4px 20px rgba(0,0,0,0.25); white-space:nowrap;
+  }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ─── LESSON MODAL ─── */
+  .lesson-modal-overlay {
+    position:fixed; inset:0; z-index:1000;
+    background:rgba(0,0,0,0); pointer-events:none;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+    transition:background 0.35s var(--ease-out);
+  }
+  .lesson-modal-overlay.open {
+    background:rgba(0,0,0,0.45);
+    backdrop-filter:blur(10px) saturate(160%);
+    -webkit-backdrop-filter:blur(10px) saturate(160%);
+    pointer-events:all;
+  }
+  .lesson-modal {
+    background:var(--surface-solid);
+    border-radius:28px;
+    padding:28px 24px 24px;
+    width:100%; max-width:500px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow:0 28px 90px rgba(0,0,0,0.22), 0 0 0 1px rgba(255,255,255,0.75);
+    position:relative;
+    transform:scale(0.88) translateY(28px);
+    opacity:0;
+    transition:transform 0.42s var(--spring), opacity 0.32s var(--ease-out);
+    will-change:transform, opacity;
+    scrollbar-width: none;
+  }
+  .lesson-modal::-webkit-scrollbar { display: none; }
+  .lesson-modal-overlay.open .lesson-modal {
+    transform:scale(1) translateY(0);
+    opacity:1;
+  }
+  .lesson-modal-accent {
+    position:absolute; top:0; right:0; left:0; height:4px;
+    border-radius:26px 26px 0 0;
+  }
+  .lesson-modal-cat {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:5px 12px; border-radius:10px; font-size:12px; font-weight:700;
+    margin-bottom:16px;
+  }
+  .lesson-modal-text {
+    font-family:'Amiri'; font-size:19px; line-height:1.85;
+    color:var(--text); text-align:right; margin-bottom:20px;
+    padding-right:4px;
+  }
+  .lesson-modal-footer {
+    display:flex; align-items:center; justify-content:space-between;
+    padding-top:14px; border-top:1px solid var(--border2);
+  }
+  .lesson-modal-meta { display:flex; flex-direction:column; gap:3px; }
+  .lesson-modal-author { font-size:13px; font-weight:600; color:var(--accent); }
+  .lesson-modal-date { font-size:11px; color:var(--text-muted); }
+  .lesson-modal-close {
+    width:38px; height:38px; border-radius:50%;
+    background:rgba(0,0,0,0.06); border:none; cursor:pointer;
+    font-size:16px; display:flex; align-items:center; justify-content:center;
+    transition:all 0.2s var(--spring); color:var(--text-secondary);
+    flex-shrink:0;
+  }
+  .lesson-modal-close:hover { background:rgba(255,59,48,0.1); color:var(--red); transform:scale(1.1); }
+  .lesson-modal-close:active { transform:scale(0.9); }
+
+  /* ─── MOOD BADGE ─── */
+  .mood-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:7px 14px; border-radius:20px;
+    font-size:13px; font-weight:600;
+    margin-bottom:18px;
+    animation: moodIn 0.5s var(--spring) 0.15s both;
+  }
+  @keyframes moodIn { from{opacity:0; transform:scale(0.7) translateY(6px)} to{opacity:1; transform:none} }
+  .mood-loading {
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:12px; color:var(--text-muted); margin-bottom:18px;
+    padding:7px 14px;
+  }
+  .mood-spinner {
+    width:14px; height:14px; border:2px solid var(--border);
+    border-top-color:var(--accent); border-radius:50%;
+    animation:spin 0.7s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  .lesson-card { cursor:pointer; }
+  .lesson-card:active { transform:scale(0.98) !important; }
+
+  /* ─── SAVING ANIMATION ─── */
+  .saving-dot {
+    display:inline-block; width:6px; height:6px; border-radius:50%; background:currentColor;
+    margin:0 2px; animation:dotPulse 0.6s infinite alternate;
+  }
+  .saving-dot:nth-child(2) { animation-delay:0.2s; }
+  .saving-dot:nth-child(3) { animation-delay:0.4s; }
+  @keyframes dotPulse { from{opacity:0.3; transform:scale(0.8)} to{opacity:1; transform:scale(1.1)} }
+
+  .comment-count-badge {
+    display:inline-flex; align-items:center; gap:3px;
+    font-size:11px; font-weight:700;
+    background: rgba(124,58,237,0.10);
+    color: var(--accent);
+    padding: 3px 8px; border-radius: 10px;
+    transition: all 0.2s var(--ease-out);
+  }
+  .comment-count-empty {
+    background: rgba(0,0,0,0.04);
+    color: var(--text-muted);
+    font-weight:500;
+  }
+  .lesson-card:hover .comment-count-badge {
+    background: rgba(124,58,237,0.16);
+  }
+  .comments-section {
+    margin-top: 22px;
+    border-top: 1px solid var(--border2);
+    padding-top: 18px;
+  }
+  .comments-title {
+    font-size: 13px; font-weight: 700; color: var(--text-muted);
+    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+    letter-spacing: 0.3px;
+  }
+  .comments-title span {
+    background: var(--accent-light); color: var(--accent);
+    border-radius: 10px; padding: 2px 8px; font-size: 11px;
+  }
+  .comments-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; max-height: 240px; overflow-y: auto; scrollbar-width: none; }
+  .comments-list::-webkit-scrollbar { display: none; }
+  .comment-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    animation: commentIn 0.35s var(--spring) both;
+  }
+  @keyframes commentIn { from{opacity:0; transform:translateY(6px) scale(0.97)} to{opacity:1; transform:none} }
+  .comment-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  }
+  .comment-avatar.nasser { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+  .comment-avatar.asmaa  { background: linear-gradient(135deg, #ec4899, #f472b6); }
+  .comment-bubble {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 14px 14px 14px 4px; padding: 10px 13px;
+    position: relative; box-shadow: var(--shadow-sm);
+  }
+  .comment-bubble-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 5px;
+  }
+  .comment-author-name { font-size: 11px; font-weight: 700; color: var(--accent); }
+  .comment-date { font-size: 10px; color: var(--text-muted); }
+  .comment-text { font-size: 14px; line-height: 1.65; color: var(--text-secondary); }
+  .comment-delete-btn {
+    background: none; border: none; cursor: pointer; color: var(--text-muted);
+    font-size: 12px; padding: 2px 5px; border-radius: 6px;
+    transition: all 0.18s; line-height: 1; opacity: 0.6;
+  }
+  .comment-delete-btn:hover { background: rgba(230,57,70,0.1); color: var(--red); opacity: 1; }
+  .comment-input-row {
+    display: flex; gap: 8px; align-items: flex-end;
+  }
+  .comment-input-avatar {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  }
+  .comment-input-avatar.nasser { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+  .comment-input-avatar.asmaa  { background: linear-gradient(135deg, #ec4899, #f472b6); }
+  .comment-input-wrap { flex: 1; position: relative; }
+  .comment-input {
+    width: 100%; padding: 10px 46px 10px 14px; border: 1.5px solid var(--border);
+    border-radius: 22px; font-family: inherit; font-size: 14px; outline: none;
+    background: var(--surface2); text-align: right; resize: none;
+    transition: all 0.22s var(--ease-out); line-height: 1.5;
+    -webkit-appearance: none; max-height: 100px; overflow-y: auto;
+  }
+  .comment-input:focus {
+    border-color: var(--accent2); background: white;
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.10);
+  }
+  .comment-send-btn {
+    position: absolute; left: 8px; bottom: 8px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    border: none; cursor: pointer; color: white; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s var(--spring);
+    box-shadow: 0 2px 8px rgba(124,58,237,0.40);
+  }
+  .comment-send-btn:hover { transform: scale(1.1); box-shadow: 0 4px 14px rgba(124,58,237,0.50); }
+  .comment-send-btn:active { transform: scale(0.92); }
+  .comment-send-btn:disabled { opacity: 0.45; cursor: default; transform: none; }
+  .comments-empty {
+    text-align: center; padding: 16px; color: var(--text-muted);
+    font-size: 13px; opacity: 0.75;
+  }
+
+  /* ─── REVIEW PAGE ─── */
+  .review-hero {
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #ec4899 100%);
+    border-radius: var(--radius-lg); padding: 28px 20px; margin-bottom: 14px;
+    text-align: center; color: white;
+    box-shadow: 0 10px 40px rgba(124,58,237,0.40);
+    animation: cardReveal 0.4s var(--ease-out) both;
+    position: relative; overflow: hidden;
+  }
+  .review-hero::before {
+    content:''; position:absolute; top:-40px; right:-40px;
+    width:180px; height:180px; border-radius:50%;
+    background: rgba(255,255,255,0.08);
+  }
+  .review-hero-icon { font-size: 40px; margin-bottom: 8px; }
+  .review-hero-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .review-hero-sub { font-size: 13px; opacity: 0.85; }
+
+  .review-reminder {
+    background: linear-gradient(135deg, rgba(244,63,94,0.10), rgba(251,113,133,0.07));
+    border: 1.5px solid rgba(244,63,94,0.25);
+    border-radius: var(--radius); padding: 16px;
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px; animation: pulse-border 2s ease-in-out infinite;
+  }
+  @keyframes pulse-border {
+    0%,100% { border-color: rgba(244,63,94,0.25); }
+    50% { border-color: rgba(244,63,94,0.55); }
+  }
+  .review-reminder-icon { font-size: 28px; flex-shrink: 0; }
+  .review-reminder-title { font-size: 14px; font-weight: 800; color: #f43f5e; margin-bottom: 3px; }
+  .review-reminder-sub { font-size: 12px; color: var(--text-muted); }
+
+  .review-last-card {
+    background: var(--surface-solid); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    margin-bottom: 14px; box-shadow: var(--shadow-sm);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .review-last-label { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+  .review-last-info { font-size: 15px; font-weight: 700; color: var(--text); }
+
+  .review-section-title {
+    font-size: 13px; font-weight: 700; color: var(--text-muted);
+    margin-bottom: 10px; letter-spacing: 0.3px;
+  }
+  .review-history-section { margin-bottom: 18px; }
+  .review-lessons-section { margin-bottom: 20px; }
+
+  .review-history-item {
+    background: var(--surface-solid); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow-sm); animation: commentIn 0.3s var(--spring) both;
+  }
+  .review-history-left { display: flex; align-items: center; gap: 12px; }
+  .review-check-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+    box-shadow: 0 3px 10px rgba(124,58,237,0.35);
+  }
+  .review-history-month { font-size: 14px; font-weight: 700; color: var(--text); }
+  .review-history-by { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .review-history-date { font-size: 11px; color: var(--text-muted); text-align: left; }
+  .review-days-ago { font-size: 10px; color: var(--accent); font-weight: 700; background: var(--accent-light); padding: 2px 7px; border-radius: 8px; }
+
+  .review-random-card {
+    background: var(--surface-solid); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px;
+    box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
+    animation: lessonIn 0.35s var(--ease-out) both;
+  }
+  .review-random-card::before {
+    content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 3px;
+  }
+  .review-random-text { font-size: 14px; line-height: 1.65; color: var(--text-secondary); margin-bottom: 8px; }
+  .review-random-meta { display: flex; align-items: center; gap: 6px; }
+
+  .btn-complete-review {
+    width: 100%; padding: 16px;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 55%, #ec4899 100%);
+    color: white; border: none; border-radius: var(--radius); cursor: pointer;
+    font-family: inherit; font-size: 16px; font-weight: 800;
+    box-shadow: 0 6px 24px rgba(124,58,237,0.45);
+    transition: all 0.25s var(--spring); letter-spacing: 0.3px;
+    margin-bottom: 30px; position: relative; overflow: hidden;
+  }
+  .btn-complete-review:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(124,58,237,0.50); }
+  .btn-complete-review:active { transform: scale(0.98); }
+  .btn-complete-review:disabled { opacity: 0.55; cursor: default; transform: none; }
+
+  .review-empty { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; }
+
+  /* ─── SCROLL FADE TOP ─── */
+  .fade-top {
+    position:sticky; top:58px; height:16px; z-index:50; pointer-events:none;
+    background:linear-gradient(to bottom, #f8f5ff, transparent);
+  }
+
+  /* ─── SHARE BUTTON ─── */
+  .btn-share {
+    display:flex; align-items:center; gap:5px;
+    background:linear-gradient(135deg,rgba(124,58,237,0.10),rgba(236,72,153,0.08));
+    border:1px solid rgba(124,58,237,0.22); border-radius:20px;
+    padding:7px 14px; cursor:pointer; font-family:inherit;
+    font-size:12px; font-weight:700; color:#7c3aed;
+    transition:all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .btn-share:hover { background:linear-gradient(135deg,rgba(124,58,237,0.18),rgba(236,72,153,0.14)); transform:translateY(-1px); box-shadow:0 4px 14px rgba(124,58,237,0.22); }
+  .btn-share:active { transform:scale(0.95); }
+
+  /* ─── SHARE OVERLAY ─── */
+  .share-overlay {
+    position:fixed; inset:0; z-index:2000;
+    background:rgba(10,5,20,0.80);
+    backdrop-filter:blur(22px); -webkit-backdrop-filter:blur(22px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px; opacity:0; pointer-events:none;
+    transition:opacity 0.3s ease;
+  }
+  .share-overlay.open { opacity:1; pointer-events:all; }
+  .share-card-wrapper {
+    transform:scale(0.82) translateY(30px);
+    transition:transform 0.42s cubic-bezier(0.34,1.56,0.64,1);
+    width:100%; max-width:360px;
+  }
+  .share-overlay.open .share-card-wrapper { transform:scale(1) translateY(0); }
+
+  #share-card { width:360px; border-radius:26px; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,0.5); font-family:'Tajawal',sans-serif; }
+  .share-card-bg { padding:36px 28px 28px; min-height:260px; display:flex; flex-direction:column; justify-content:space-between; position:relative; }
+  .share-card-orb1 { position:absolute; width:220px; height:220px; border-radius:50%; top:-70px; left:-70px; background:radial-gradient(circle,rgba(255,255,255,0.14),transparent); }
+  .share-card-orb2 { position:absolute; width:160px; height:160px; border-radius:50%; bottom:-50px; right:-50px; background:radial-gradient(circle,rgba(255,255,255,0.10),transparent); }
+  .share-card-lines { position:absolute; inset:0; opacity:0.05; background-image:repeating-linear-gradient(45deg,rgba(255,255,255,1) 0,rgba(255,255,255,1) 1px,transparent 1px,transparent 22px); }
+  .share-card-top { position:relative; z-index:1; }
+  .share-card-label { font-size:10px; letter-spacing:2.5px; font-weight:800; text-transform:uppercase; color:rgba(255,255,255,0.65); margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+  .share-card-label::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.3); }
+  .share-card-text { font-family:'Amiri',serif; font-size:20px; line-height:1.95; color:white; text-align:right; text-shadow:0 1px 6px rgba(0,0,0,0.2); }
+  .share-card-bottom { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; margin-top:26px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.22); }
+  .share-card-author { font-size:12px; color:rgba(255,255,255,0.85); font-weight:700; }
+  .share-card-cat { font-size:11px; color:rgba(255,255,255,0.75); font-weight:700; background:rgba(255,255,255,0.18); padding:4px 11px; border-radius:10px; }
+  .share-card-logo { font-size:11px; color:rgba(255,255,255,0.55); font-family:'Amiri'; }
+
+  .share-actions { display:flex; gap:10px; margin-top:14px; width:100%; max-width:360px; }
+  .share-btn { flex:1; padding:14px 10px; border:none; border-radius:16px; cursor:pointer; font-family:'Tajawal',sans-serif; font-size:14px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+  .share-btn.whatsapp { background:linear-gradient(135deg,#25d366,#128c7e); color:white; box-shadow:0 5px 18px rgba(37,211,102,0.40); }
+  .share-btn.whatsapp:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(37,211,102,0.50); }
+  .share-btn.download { background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.25); }
+  .share-btn.download:hover { background:rgba(255,255,255,0.25); transform:translateY(-1px); }
+  .share-btn:active { transform:scale(0.96); }
+  .share-close { display:block; margin-top:12px; background:none; border:none; color:rgba(255,255,255,0.5); cursor:pointer; font-family:'Tajawal',sans-serif; font-size:13px; padding:8px; transition:color 0.2s; }
+  .share-close:hover { color:white; }
+
+</style>
+
+</head>
+<body>
+
+<!-- ─── AUTH SCREEN ─── -->
+
+<div id="auth-screen">
+  <div class="auth-ambient">
+    <div class="auth-orb"></div>
+    <div class="auth-orb"></div>
+    <div class="auth-orb"></div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="icon-wrap">📖</div>
+      <h1>دفترنا</h1>
+      <p>دروس الحياة — ناصر وأسماء</p>
+    </div>
+    <div class="form-group">
+      <label>اسم المستخدم</label>
+      <input type="text" id="username-input" placeholder="nasser / asmaa" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>كلمة المرور</label>
+      <input type="password" id="password-input" placeholder="••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" onclick="login()">دخول إلى الدفتر</button>
+  </div>
+</div>
+
+<!-- ─── APP ─── -->
+
+<div id="app">
+  <header class="header">
+    <div class="header-title">📖 دفترنا</div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <div class="header-user" id="header-user">
+        <span class="header-user-name" id="header-user-name"></span>
+        <div class="header-avatar" id="header-avatar"></div>
+      </div>
+      <button class="btn-logout" onclick="logout()" title="خروج">↩</button>
+    </div>
+  </header>
+
+  <div class="nav-wrap">
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('lessons',this)">📝 الدروس</button>
+      <button class="nav-tab" onclick="showPage('stats',this)">📊 الإحصائيات</button>
+      <button class="nav-tab" onclick="showPage('review',this)">🔁 المراجعة</button>
+    </div>
+  </div>
+
+  <!-- LESSONS PAGE -->
+
+  <div class="page active" id="page-lessons">
+
+<!-- Category chips -->
+
+<div class="cat-scroll-wrap">
+  <div class="cat-chips" id="cat-chips-container"></div>
+</div>
+
+<!-- Daily quote -->
+
+<div class="daily-quote" id="daily-quote-card">
+  <div class="daily-quote-label">✦ درس اليوم المميز ✦</div>
+  <div id="daily-quote-text">...</div>
+</div>
+
+<!-- Add card -->
+
+<div class="add-card">
+  <div class="add-card-header">
+    <div class="add-card-icon">✍️</div>
+    <div class="add-card-title">أضف درساً جديداً</div>
+  </div>
+  <select id="new-cat" class="styled-select">
+    <option value="work">💼 العمل والمهنة</option>
+    <option value="family">👨‍👩‍👧 الأسرة والزواج</option>
+    <option value="social">🤝 العلاقات الاجتماعية</option>
+    <option value="health">🌿 الصحة والغذاء</option>
+    <option value="finance">💰 المال والاقتصاد</option>
+    <option value="religion">🕌 الدين والروحانيات</option>
+    <option value="self">🧠 تطوير الذات</option>
+    <option value="wisdom" selected>✨ حكمة عامة</option>
+  </select>
+  <textarea id="new-lesson" class="styled-textarea" placeholder="ماذا تعلّمت اليوم؟ شارك درساً من تجربتك..." rows="3" oninput="updateCharCount(this)"></textarea>
+  <div class="char-count"><span id="char-count">0</span> / 500 حرف</div>
+  <button class="btn-save" onclick="addLesson()" id="save-btn">حفظ في السحابة ＋</button>
+</div>
+
+<!-- Search -->
+
+<div class="search-wrap">
+  <span class="search-icon">🔍</span>
+  <input type="text" id="search-input" placeholder="ابحث في الدروس..." oninput="renderLessons()">
+</div>
+
+<div id="lessons-list"></div>
+
+  </div>
+
+  <!-- STATS PAGE -->
+
+  <div class="page" id="page-stats">
+
+<div class="stats-hero">
+  <div class="stats-title-hero">📊 إحصائياتنا</div>
+  <div class="stats-greeting" id="stats-greeting">يوم مبارك وسعيد</div>
+  <div class="stats-hero-nums">
+    <div class="stats-num-block">
+      <div class="stats-num" id="s-total">0</div>
+      <div class="stats-num-label">إجمالي الدروس</div>
+    </div>
+    <div class="stats-num-block">
+      <div class="stats-num" id="s-user">0</div>
+      <div class="stats-num-label">دروسي أنا</div>
+    </div>
+    <div class="stats-num-block">
+      <div class="stats-num" id="s-other">0</div>
+      <div class="stats-num-label">دروس الشريك</div>
+    </div>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card" style="--delay:0.1s">
+    <div class="stat-card-icon">📅</div>
+    <div class="stat-card-num" id="s-today">0</div>
+    <div class="stat-card-label">إضافات اليوم</div>
+  </div>
+  <div class="stat-card" style="--delay:0.15s">
+    <div class="stat-card-icon">📂</div>
+    <div class="stat-card-num" id="s-cats">0</div>
+    <div class="stat-card-label">أقسام مختلفة</div>
+  </div>
+  <div class="stat-card" style="--delay:0.2s">
+    <div class="stat-card-icon">📖</div>
+    <div class="stat-card-num" id="s-week">0</div>
+    <div class="stat-card-label">هذا الأسبوع</div>
+  </div>
+  <div class="stat-card" style="--delay:0.25s">
+    <div class="stat-card-icon">🏆</div>
+    <div class="stat-card-num" id="s-top-cat">—</div>
+    <div class="stat-card-label">أكثر قسم</div>
+  </div>
+</div>
+
+<div class="cat-breakdown">
+  <h3>توزيع الدروس على الأقسام</h3>
+  <div id="cat-breakdown-list"></div>
+</div>
+
+<div class="recent-section" style="margin-top:18px;">
+  <div style="background:var(--surface-solid); border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow-sm);">
+    <h3 style="margin-bottom:0">آخر الإضافات</h3>
+    <div id="recent-list"></div>
+  </div>
+</div>
+
+  </div>
+
+  <!-- REVIEW PAGE -->
+
+  <div class="page" id="page-review">
+
+<div class="review-hero" id="review-hero">
+  <div class="review-hero-icon">🔁</div>
+  <div class="review-hero-title">المراجعة الشهرية</div>
+  <div class="review-hero-sub" id="review-hero-sub">راجع دروسك كل شهر واستفد منها</div>
+</div>
+
+<div class="review-reminder" id="review-reminder" style="display:none">
+  <div class="review-reminder-icon">⏰</div>
+  <div class="review-reminder-text">
+    <div class="review-reminder-title">حان وقت المراجعة!</div>
+    <div class="review-reminder-sub" id="review-reminder-sub"></div>
+  </div>
+</div>
+
+<div class="review-last-card" id="review-last-card">
+  <div class="review-last-label">آخر مراجعة</div>
+  <div class="review-last-info" id="review-last-info">لم تتم أي مراجعة بعد</div>
+</div>
+
+<div class="review-history-section">
+  <div class="review-section-title">📋 سجل المراجعات</div>
+  <div id="review-history-list">
+    <div class="review-empty">لا توجد مراجعات بعد — ابدأ أول مراجعة الآن! ✨</div>
+  </div>
+</div>
+
+<div class="review-lessons-section">
+  <div class="review-section-title">✨ دروس مقترحة للمراجعة</div>
+  <div id="review-random-lessons"></div>
+</div>
+
+<button class="btn-complete-review" id="btn-complete-review" onclick="completeReview()">
+  ✅ أتممت مراجعة الدروس هذا الشهر
+</button>
+
+  </div>
+
+</div>
+
+<div class="lesson-modal-overlay" id="lesson-modal-overlay" onclick="closeLessonModal(event)">
+  <div class="lesson-modal" id="lesson-modal">
+    <div class="lesson-modal-accent" id="modal-accent"></div>
+    <div class="lesson-modal-cat" id="modal-cat"></div>
+    <div id="modal-mood-wrap"></div>
+    <div class="lesson-modal-text" id="modal-text"></div>
+    <div class="lesson-modal-footer">
+      <div class="lesson-modal-meta">
+        <div class="lesson-modal-author" id="modal-author"></div>
+        <div class="lesson-modal-date" id="modal-date"></div>
+      </div>
+      <button class="lesson-modal-close" onclick="closeLessonModal()">✕</button>
+    </div>
+    <div style="display:flex; justify-content:center; padding-top:10px;">
+      <button class="btn-share" onclick="openShareCard()">🖼️ مشاركة كصورة جميلة</button>
+    </div>
+
+<!-- Comments Section -->
+<div class="comments-section" id="modal-comments-section">
+  <div class="comments-title">
+    💬 التعليقات <span id="comments-count">0</span>
+  </div>
+  <div class="comments-list" id="comments-list">
+    <div class="comments-empty">كن أول من يعلّق ✨</div>
+  </div>
+  <div class="comment-input-row">
+    <div class="comment-input-avatar" id="comment-user-avatar"></div>
+    <div class="comment-input-wrap">
+      <textarea class="comment-input" id="comment-input" placeholder="أضف تعليقاً..." rows="1"
+        oninput="autoResizeComment(this)" onkeydown="handleCommentKey(event)"></textarea>
+      <button class="comment-send-btn" onclick="submitComment()" id="comment-send-btn" title="إرسال">➤</button>
+    </div>
+  </div>
+</div>
+
+  </div>
+</div>
+
+<!-- SHARE OVERLAY -->
+<div class="share-overlay" id="share-overlay" onclick="handleShareOverlayClick(event)">
+  <div class="share-card-wrapper">
+    <div id="share-card">
+      <div class="share-card-bg" id="share-card-bg">
+        <div class="share-card-orb1"></div>
+        <div class="share-card-orb2"></div>
+        <div class="share-card-lines"></div>
+        <div class="share-card-top">
+          <div class="share-card-label">✦ دفتر دروس الحياة ✦</div>
+          <div class="share-card-text" id="share-card-text"></div>
+        </div>
+        <div class="share-card-bottom">
+          <div>
+            <div class="share-card-author" id="share-card-author"></div>
+            <div class="share-card-logo">📖 دفتر ناصر وأسماء</div>
+          </div>
+          <div class="share-card-cat" id="share-card-cat"></div>
+        </div>
+      </div>
+    </div>
+    <div class="share-actions">
+      <button class="share-btn whatsapp" onclick="shareToWhatsApp()">💬 واتساب</button>
+      <button class="share-btn download" onclick="downloadShareImage()">📥 حفظ الصورة</button>
+    </div>
+    <button class="share-close" onclick="closeShareCard()">إغلاق ✕</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const USERS = { "nasser": "1234", "asmaa": "1234" };
+
+const CATS = {
+  work:     { label:'العمل', emoji:'💼', color:'#6366f1' },
+  family:   { label:'الأسرة', emoji:'👨‍👩‍👧', color:'#ec4899' },
+  social:   { label:'اجتماعي', emoji:'🤝', color:'#f97316' },
+  health:   { label:'الصحة', emoji:'🌿', color:'#10b981' },
+  finance:  { label:'المال', emoji:'💰', color:'#0ea5e9' },
+  religion: { label:'الدين', emoji:'🕌', color:'#8b5cf6' },
+  self:     { label:'تطوير', emoji:'🧠', color:'#d946ef' },
+  wisdom:   { label:'حكمة', emoji:'✨', color:'#f59e0b' },
+};
+
+const QUOTES = [
+  "من تعلّم من تجارب الآخرين وفّر على نفسه كثيراً من الخسائر",
+  "الحكمة لا تُورث، تُكتسب بالتجربة والتأمل",
+  "أعظم درس تتعلمه هو أنك لا تعرف كل شيء",
+  "كل يوم تمر دون أن تتعلم شيئاً هو يوم ضائع",
+  "الفشل ليس السقوط، بل رفضك أن تقوم من جديد",
+  "لا تكن خبيراً في كل شيء، كن فضولياً في كل شيء",
+  "الصبر يُعلّمنا أن الوقت هو الدواء لأكثر من جرح",
+];
+
+let user = null, currentFilter = 'all', allLessons = [], commentCounts = {};
+
+function login() {
+  const u = document.getElementById('username-input').value.trim().toLowerCase();
+  const p = document.getElementById('password-input').value;
+  if (USERS[u] === p) {
+    user = u;
+    const displayName = u === 'nasser' ? 'ناصر' : 'أسماء';
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('header-user-name').textContent = displayName;
+    document.getElementById('header-avatar').textContent = displayName[0];
+    setupChips();
+    setDailyQuote();
+    window.fbListen((data) => { 
+      allLessons = data; 
+      renderLessons(); 
+      renderStats();
+    });
+    initReview();
+  } else {
+    const card = document.querySelector('.auth-card');
+    card.style.animation = 'none';
+    card.style.transform = 'translateX(0)';
+    setTimeout(() => {
+      card.style.transition = 'transform 0.1s';
+      card.style.transform = 'translateX(-8px)';
+      setTimeout(() => { card.style.transform = 'translateX(8px)'; }, 100);
+      setTimeout(() => { card.style.transform = 'translateX(-5px)'; }, 200);
+      setTimeout(() => { card.style.transform = 'translateX(5px)'; }, 300);
+      setTimeout(() => { card.style.transform = 'translateX(0)'; card.style.transition = ''; }, 400);
+    }, 10);
+  }
+}
+
+function logout() { location.reload(); }
+
+function setDailyQuote() {
+  const idx = new Date().getDate() % QUOTES.length;
+  document.getElementById('daily-quote-text').textContent = QUOTES[idx];
+}
+
+function setupChips() {
+  const c = document.getElementById('cat-chips-container');
+  let html = `<button class="cat-chip active" id="chip-all" onclick="setFilter('all')">🗂 الكل <span class="chip-count" id="count-all">0</span></button>`;
+  Object.keys(CATS).forEach(k => {
+    html += `<button class="cat-chip" id="chip-${k}" onclick="setFilter('${k}')">${CATS[k].emoji} ${CATS[k].label} <span class="chip-count" id="count-${k}">0</span></button>`;
+  });
+  c.innerHTML = html;
+}
+
+function updateChipCounts() {
+  document.getElementById('count-all').textContent = allLessons.length;
+  Object.keys(CATS).forEach(k => {
+    const el = document.getElementById('count-' + k);
+    if (el) el.textContent = allLessons.filter(l => l.cat === k).length;
+  });
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+  const chip = document.getElementById('chip-' + f);
+  if (chip) {
+    chip.classList.add('active');
+    chip.scrollIntoView({ behavior:'smooth', inline:'nearest', block:'nearest' });
+  }
+  renderLessons();
+}
+
+function updateCharCount(el) {
+  document.getElementById('char-count').textContent = el.value.length;
+}
+
+async function addLesson() {
+  const text = document.getElementById('new-lesson').value.trim();
+  const cat = document.getElementById('new-cat').value;
+  if (!text) { 
+    document.getElementById('new-lesson').focus();
+    document.getElementById('new-lesson').style.borderColor = '#ff3b30';
+    setTimeout(() => document.getElementById('new-lesson').style.borderColor = '', 1500);
+    return; 
+  }
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  btn.innerHTML = `جاري الحفظ <span class="saving-dot"></span><span class="saving-dot"></span><span class="saving-dot"></span>`;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ar-EG', { day:'numeric', month:'long', year:'numeric' });
+  const ok = await window.fbSave({ text, cat, author: user, timestamp: Date.now(), dateStr });
+  btn.disabled = false;
+  btn.innerHTML = 'حفظ في السحابة ＋';
+  if (ok) {
+    document.getElementById('new-lesson').value = '';
+    document.getElementById('char-count').textContent = '0';
+    showToast('✅ تم الحفظ بنجاح');
+  } else {
+    showToast('❌ خطأ في الحفظ، حاول مرة أخرى');
+  }
+}
+
+async function deleteLesson(id) {
+  if (confirm("هل تريد حذف هذا الدرس نهائياً؟")) { 
+    await window.fbDelete(id); 
+    showToast('🗑 تم الحذف');
+  }
+}
+
+function renderLessons() {
+  updateChipCounts();
+  const q = document.getElementById('search-input').value.toLowerCase();
+  let list = allLessons;
+  if (currentFilter !== 'all') list = list.filter(l => l.cat === currentFilter);
+  if (q) list = list.filter(l => l.text.toLowerCase().includes(q));
+  
+  if (list.length === 0) {
+    document.getElementById('lessons-list').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">${q ? '🔍' : '📝'}</div>
+        <h3>${q ? 'لا توجد نتائج' : 'لا توجد دروس بعد'}</h3>
+        <p style="font-size:14px; margin-top:4px">${q ? 'جرّب كلمة بحث مختلفة' : 'أضف أول درس لك الآن!'}</p>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('lessons-list').innerHTML = list.map((l, i) => {
+    const cat = CATS[l.cat] || CATS.wisdom;
+    const hex = cat.color;
+    const bgAlpha = hex + '18';
+    const isOwn = l.author === user;
+    const count = l.commentCount || 0;
+    const countBadge = count > 0
+      ? `<span class="comment-count-badge">💬 ${count}</span>`
+      : `<span class="comment-count-badge comment-count-empty">💬</span>`;
+    return `
+    <div class="lesson-card" style="animation-delay:${Math.min(i * 0.04, 0.3)}s" onclick="openLessonModal('${l.id}')">
+      <div class="lesson-card-accent" style="background:${cat.color}"></div>
+      <div class="lesson-text">${escHtml(l.text)}</div>
+      <div class="lesson-footer">
+        <div class="lesson-tags">
+          <span class="cat-badge" style="--badge-bg:${bgAlpha}; --badge-color:${cat.color}">${cat.emoji} ${cat.label}</span>
+          <span class="author-badge"><span class="author-dot"></span> ${l.author === 'nasser' ? 'ناصر' : 'أسماء'}</span>
+        </div>
+        <div class="lesson-actions">
+          ${countBadge}
+          <span class="lesson-date">${l.dateStr || ''}</span>
+          ${isOwn ? `<button class="btn-del" onclick="event.stopPropagation(); deleteLesson('${l.id}')" title="حذف">✕</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Update daily quote from newest lesson
+  if (allLessons.length > 0 && !currentFilter && !q) {
+    const q2 = allLessons[0];
+    if (q2 && q2.text.length > 20) {
+      document.getElementById('daily-quote-text').textContent = q2.text.substring(0, 120) + (q2.text.length > 120 ? '...' : '');
+    }
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderStats() {
+  const total = allLessons.length;
+  const mine = allLessons.filter(l => l.author === user).length;
+  const other = total - mine;
+  document.getElementById('s-total').textContent = total;
+  document.getElementById('s-user').textContent = mine;
+  document.getElementById('s-other').textContent = other;
+
+  const todayStr = new Date().toLocaleDateString('ar-EG', { day:'numeric', month:'long', year:'numeric' });
+  const todayCount = allLessons.filter(l => l.dateStr === todayStr).length;
+  document.getElementById('s-today').textContent = todayCount;
+
+  const now = Date.now();
+  const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+  document.getElementById('s-week').textContent = allLessons.filter(l => l.timestamp > weekAgo).length;
+
+  const usedCats = new Set(allLessons.map(l => l.cat)).size;
+  document.getElementById('s-cats').textContent = usedCats;
+
+  // Top category
+  const catCounts = {};
+  allLessons.forEach(l => { catCounts[l.cat] = (catCounts[l.cat] || 0) + 1; });
+  const topCat = Object.entries(catCounts).sort((a,b) => b[1]-a[1])[0];
+  document.getElementById('s-top-cat').textContent = topCat ? CATS[topCat[0]]?.emoji || '—' : '—';
+
+  // Greeting
+  const hr = new Date().getHours();
+  const greeting = hr < 12 ? 'صباح الخير والبركة' : hr < 17 ? 'مساء الخير والنور' : 'مساء الخير';
+  document.getElementById('stats-greeting').textContent = greeting;
+
+  // Bar chart
+  const maxCount = Math.max(...Object.values(catCounts), 1);
+  const breakdown = document.getElementById('cat-breakdown-list');
+  const sorted = Object.entries(CATS).map(([k,v]) => ({ k, v, count: catCounts[k] || 0 })).sort((a,b) => b.count - a.count);
+  breakdown.innerHTML = sorted.map(({k, v, count}, i) => `
+    <div class="cat-bar-item" style="--delay:${0.1 + i*0.05}s">
+      <div class="cat-bar-header">
+        <div class="cat-bar-label">${v.emoji} ${v.label}</div>
+        <div class="cat-bar-count">${count} درس</div>
+      </div>
+      <div class="cat-bar-track">
+        <div class="cat-bar-fill" style="width:${Math.round((count/maxCount)*100)}%; background:${v.color}; --bar-delay:${0.3+i*0.06}s"></div>
+      </div>
+    </div>`).join('');
+
+  // Recent
+  const recent = allLessons.slice(0, 5);
+  document.getElementById('recent-list').innerHTML = recent.map(l => {
+    const cat = CATS[l.cat] || CATS.wisdom;
+    return `
+    <div class="recent-item">
+      <div class="recent-dot" style="background:${cat.color}"></div>
+      <div class="recent-text">${l.text.substring(0,70)}${l.text.length>70?'...':''}</div>
+      <div class="recent-meta">${l.author==='nasser'?'ناصر':'أسماء'}</div>
+    </div>`;
+  }).join('');
+}
+
+let _activePage = 'lessons';
+function showPage(name, btn) {
+  const current = document.getElementById('page-' + _activePage);
+  const next = document.getElementById('page-' + name);
+  if (_activePage === name) return;
+
+  current.classList.remove('active');
+  next.classList.add('active', 'page-enter');
+  setTimeout(() => next.classList.remove('page-enter'), 400);
+
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _activePage = name;
+  if (name === 'review') renderReviewPage();
+}
+
+let _toastTimer;
+function showToast(m) {
+  const t = document.getElementById('toast');
+  t.textContent = m;
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Enter key support for auth
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    const authScreen = document.getElementById('auth-screen');
+    if (authScreen.style.display !== 'none') login();
+  }
+  if (e.key === 'Escape') closeLessonModal();
+});
+
+// ─── COMMENTS ───
+let _currentLessonId = null;
+let _currentLesson = null;
+let _commentsUnsub = null;
+
+function openLessonModal(id) {
+  const l = allLessons.find(x => x.id === id);
+  if (!l) return;
+  _currentLesson = l;
+  const cat = CATS[l.cat] || CATS.wisdom;
+
+  document.getElementById('modal-accent').style.background = cat.color;
+  document.getElementById('modal-cat').textContent = cat.emoji + ' ' + cat.label;
+  document.getElementById('modal-cat').style.cssText = `background:${cat.color}18; color:${cat.color}; display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:10px; font-size:12px; font-weight:700; margin-bottom:16px;`;
+  document.getElementById('modal-text').textContent = l.text;
+  document.getElementById('modal-author').textContent = l.author === 'nasser' ? '✍️ ناصر' : '✍️ أسماء';
+  document.getElementById('modal-date').textContent = l.dateStr || '';
+
+  document.getElementById('modal-mood-wrap').innerHTML = `
+    <div class="mood-loading">
+      <div class="mood-spinner"></div>
+      <span>يحلل المزاج...</span>
+    </div>`;
+
+  // Reset comments area
+  document.getElementById('comment-input').value = '';
+  document.getElementById('comments-list').innerHTML = '<div class="comments-empty">جاري التحميل...</div>';
+  document.getElementById('comments-count').textContent = '0';
+
+  // Set avatar for current user
+  const av = document.getElementById('comment-user-avatar');
+  av.textContent = user === 'nasser' ? 'ن' : 'أ';
+  av.className = 'comment-input-avatar ' + user;
+
+  // Listen to comments for this lesson
+  _currentLessonId = id;
+  if (_commentsUnsub) _commentsUnsub();
+  _commentsUnsub = window.fbListenComments(id, renderComments);
+
+  document.getElementById('lesson-modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  detectMood(l.text);
+}
+
+function renderComments(comments) {
+  const list = document.getElementById('comments-list');
+  const countEl = document.getElementById('comments-count');
+  countEl.textContent = comments.length;
+  if (comments.length === 0) {
+    list.innerHTML = '<div class="comments-empty">كن أول من يعلّق ✨</div>';
+    return;
+  }
+  list.innerHTML = comments.map((c, i) => {
+    const isMe = c.author === user;
+    const initial = c.author === 'nasser' ? 'ن' : 'أ';
+    const name = c.author === 'nasser' ? 'ناصر' : 'أسماء';
+    return `
+    <div class="comment-item" style="animation-delay:${i*0.04}s">
+      <div class="comment-avatar ${c.author}">${initial}</div>
+      <div class="comment-bubble">
+        <div class="comment-bubble-header">
+          <span class="comment-author-name">${name}</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="comment-date">${c.dateStr || ''}</span>
+            ${isMe ? `<button class="comment-delete-btn" onclick="deleteComment('${c.id}')" title="حذف">✕</button>` : ''}
+          </div>
+        </div>
+        <div class="comment-text">${escHtml(c.text)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  // Scroll to bottom of comments
+  list.scrollTop = list.scrollHeight;
+}
+
+async function submitComment() {
+  const input = document.getElementById('comment-input');
+  const text = input.value.trim();
+  if (!text || !_currentLessonId) return;
+  const btn = document.getElementById('comment-send-btn');
+  btn.disabled = true;
+  const now = new Date();
+  const dateStr = now.toLocaleTimeString('ar-EG', { hour:'2-digit', minute:'2-digit' });
+  const ok = await window.fbSaveComment({
+    lessonId: _currentLessonId,
+    text,
+    author: user,
+    timestamp: Date.now(),
+    dateStr
+  });
+  if (ok) {
+    input.value = '';
+    input.style.height = '';
+  } else {
+    showToast('❌ فشل إرسال التعليق، تحقق من الاتصال');
+  }
+  btn.disabled = false;
+}
+
+async function deleteComment(id) {
+  await window.fbDeleteComment(id, _currentLessonId);
+}
+
+function autoResizeComment(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+}
+
+function handleCommentKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitComment();
+  }
+}
+
+function closeLessonModal(e) {
+  if (e && e.target !== document.getElementById('lesson-modal-overlay')) return;
+  document.getElementById('lesson-modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  if (_commentsUnsub) { _commentsUnsub(); _commentsUnsub = null; }
+  _currentLessonId = null;
+}
+const MOODS = {
+  متأمل:    { emoji:'🌙', bg:'#8b5cf618', color:'#8b5cf6' },
+  ممتنّ:    { emoji:'🌸', bg:'#ec489918', color:'#ec4899' },
+  محفوز:    { emoji:'⚡', bg:'#6366f118', color:'#6366f1' },
+  حزين:     { emoji:'🌧️', bg:'#64748b18', color:'#64748b' },
+  هادئ:     { emoji:'🍃', bg:'#10b98118', color:'#10b981' },
+  غاضب:     { emoji:'🔥', bg:'#f43f5e18', color:'#f43f5e' },
+  متفائل:   { emoji:'☀️', bg:'#f59e0b18', color:'#f59e0b' },
+  متعلّم:   { emoji:'📚', bg:'#0ea5e918', color:'#0ea5e9' },
+};
+
+async function detectMood(text) {
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 20,
+        system: 'أنت محلل مزاج. اقرأ الحكمة وأجب بكلمة واحدة فقط تصف المزاج الذي كُتبت به. الكلمات المسموح بها فقط: متأمل، ممتنّ، محفوز، حزين، هادئ، غاضب، متفائل، متعلّم. لا تكتب أي شيء آخر.',
+        messages: [{ role: 'user', content: text }]
+      })
+    });
+    const data = await res.json();
+    const moodKey = data?.content?.[0]?.text?.trim().replace(/[.\n]/g,'');
+    const mood = MOODS[moodKey] || MOODS['متأمل'];
+    document.getElementById('modal-mood-wrap').innerHTML = `
+      <div class="mood-badge" style="background:${mood.bg}; color:${mood.color}">
+        ${mood.emoji} <span>كُتبت بمزاج ${moodKey || 'متأمل'}</span>
+      </div>`;
+  } catch {
+    document.getElementById('modal-mood-wrap').innerHTML = '';
+  }
+}
+
+// ─── REVIEW PAGE ───
+let allReviews = [];
+
+function initReview() {
+  window.fbListenReviews((data) => {
+    allReviews = data;
+    renderReviewPage();
+  });
+}
+
+function renderReviewPage() {
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  const last = allReviews[0];
+  const lastInfoEl = document.getElementById('review-last-info');
+  const reminderEl = document.getElementById('review-reminder');
+  const reminderSub = document.getElementById('review-reminder-sub');
+  const heroSub = document.getElementById('review-hero-sub');
+  const btn = document.getElementById('btn-complete-review');
+  if (!lastInfoEl) return;
+
+  if (last) {
+    const lastDate = new Date(last.timestamp);
+    const monthName = lastDate.toLocaleDateString('ar-EG', { month:'long', year:'numeric' });
+    const byName = last.by === 'nasser' ? 'ناصر' : 'أسماء';
+    lastInfoEl.textContent = `${monthName} — ${byName}`;
+    const reviewedThisMonth = allReviews.some(r => {
+      const d = new Date(r.timestamp);
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
+    if (reviewedThisMonth) {
+      heroSub.textContent = '✅ أتممتم مراجعة هذا الشهر، أحسنتم!';
+      reminderEl.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = '✅ تمت المراجعة هذا الشهر';
+    } else {
+      const daysSince = Math.floor((now - lastDate) / (1000*60*60*24));
+      heroSub.textContent = 'راجع دروسك كل شهر واستفد منها';
+      reminderEl.style.display = 'flex';
+      reminderSub.textContent = `مضى ${daysSince} يوماً على آخر مراجعة — حان وقت مراجعة جديدة!`;
+      btn.disabled = false;
+      btn.textContent = '✅ أتممت مراجعة الدروس هذا الشهر';
+    }
+  } else {
+    lastInfoEl.textContent = 'لم تتم أي مراجعة بعد';
+    heroSub.textContent = 'راجع دروسك كل شهر واستفد منها';
+    reminderEl.style.display = 'flex';
+    reminderSub.textContent = 'لم تتم أي مراجعة حتى الآن — ابدأ أولى مراجعاتكم!';
+    btn.disabled = false;
+  }
+
+  // سجل المراجعات
+  const historyEl = document.getElementById('review-history-list');
+  if (allReviews.length === 0) {
+    historyEl.innerHTML = '<div class="review-empty">لا توجد مراجعات بعد — ابدأ أول مراجعة الآن! ✨</div>';
+  } else {
+    historyEl.innerHTML = allReviews.map((r, i) => {
+      const d = new Date(r.timestamp);
+      const monthName = d.toLocaleDateString('ar-EG', { month:'long', year:'numeric' });
+      const dateStr = d.toLocaleDateString('ar-EG', { day:'numeric', month:'short' });
+      const daysSince = Math.floor((now - d) / (1000*60*60*24));
+      const daysLabel = daysSince === 0 ? 'اليوم' : daysSince === 1 ? 'أمس' : `منذ ${daysSince} يوم`;
+      const byName = r.by === 'nasser' ? 'ناصر' : 'أسماء';
+      return `
+      <div class="review-history-item" style="animation-delay:${i*0.05}s">
+        <div class="review-history-left">
+          <div class="review-check-icon">✅</div>
+          <div>
+            <div class="review-history-month">${monthName}</div>
+            <div class="review-history-by">راجعها ${byName} • ${r.lessonsCount || 0} درس</div>
+          </div>
+        </div>
+        <div style="text-align:left">
+          <div class="review-history-date">${dateStr}</div>
+          <div class="review-days-ago">${daysLabel}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  renderRandomLessons();
+}
+
+function renderRandomLessons() {
+  const el = document.getElementById('review-random-lessons');
+  if (!el) return;
+  if (allLessons.length === 0) {
+    el.innerHTML = '<div class="review-empty">جاري تحميل الدروس... ⏳</div>';
+    setTimeout(renderRandomLessons, 1500);
+    return;
+  }
+  const shuffled = [...allLessons].sort(() => Math.random() - 0.5).slice(0, 5);
+  el.innerHTML = shuffled.map((l, i) => {
+    const cat = CATS[l.cat] || CATS.wisdom;
+    return `
+    <div class="review-random-card" style="animation-delay:${i*0.06}s; cursor:pointer; position:relative" onclick="openLessonModal('${l.id}')">
+      <div style="position:absolute; right:0; top:0; bottom:0; width:3px; background:${cat.color};"></div>
+      <div class="review-random-text">${escHtml(l.text.length > 120 ? l.text.slice(0,120)+'...' : l.text)}</div>
+      <div class="review-random-meta">
+        <span class="cat-badge" style="--badge-bg:${cat.color}18; --badge-color:${cat.color}">${cat.emoji} ${cat.label}</span>
+        <span class="lesson-date">${l.dateStr || ''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function completeReview() {
+  const btn = document.getElementById('btn-complete-review');
+  btn.disabled = true;
+  btn.textContent = '⏳ جاري الحفظ...';
+  const now = new Date();
+  const ok = await window.fbSaveReview({
+    by: user,
+    timestamp: Date.now(),
+    month: now.getMonth(),
+    year: now.getFullYear(),
+    dateStr: now.toLocaleDateString('ar-EG', { day:'numeric', month:'long', year:'numeric' }),
+    lessonsCount: allLessons.length,
+  });
+  if (ok) {
+    showToast('✅ تم تسجيل مراجعة ' + now.toLocaleDateString('ar-EG', { month:'long', year:'numeric' }));
+  } else {
+    btn.disabled = false;
+    btn.textContent = '✅ أتممت مراجعة الدروس هذا الشهر';
+    showToast('❌ فشل الحفظ، تحقق من الاتصال');
+  }
+}
+
+// ─── SHARE CARD ───
+const SHARE_GRADIENTS = [
+  'linear-gradient(135deg,#7c3aed 0%,#a855f7 55%,#ec4899 100%)',
+  'linear-gradient(135deg,#1e3a5f 0%,#2563eb 55%,#7c3aed 100%)',
+  'linear-gradient(135deg,#064e3b 0%,#059669 55%,#0ea5e9 100%)',
+  'linear-gradient(135deg,#7f1d1d 0%,#dc2626 55%,#f59e0b 100%)',
+  'linear-gradient(135deg,#1e1b4b 0%,#4f46e5 55%,#ec4899 100%)',
+  'linear-gradient(135deg,#3b0764 0%,#7c3aed 55%,#c026d3 100%)',
+  'linear-gradient(135deg,#0c4a6e 0%,#0284c7 55%,#06b6d4 100%)',
+  'linear-gradient(135deg,#451a03 0%,#b45309 55%,#d97706 100%)',
+];
+
+let _shareLesson = null;
+
+function openShareCard() {
+  _shareLesson = _currentLesson || allLessons.find(x => x.id === _currentLessonId);
+  if (!_shareLesson) return;
+  const l = _shareLesson;
+  const cat = CATS[l.cat] || CATS.wisdom;
+  document.getElementById('share-card-bg').style.background = SHARE_GRADIENTS[Math.floor(Math.random() * SHARE_GRADIENTS.length)];
+  document.getElementById('share-card-text').textContent = l.text.length > 180 ? l.text.slice(0,180)+'...' : l.text;
+  document.getElementById('share-card-author').textContent = l.author === 'nasser' ? '✍️ ناصر' : '✍️ أسماء';
+  document.getElementById('share-card-cat').textContent = cat.emoji + ' ' + cat.label;
+  document.getElementById('share-overlay').classList.add('open');
+}
+
+function closeShareCard() {
+  document.getElementById('share-overlay').classList.remove('open');
+}
+
+function handleShareOverlayClick(e) {
+  if (e.target === document.getElementById('share-overlay')) closeShareCard();
+}
+
+async function downloadShareImage() {
+  showToast('⏳ جاري تحضير الصورة...');
+  try {
+    const canvas = await html2canvas(document.getElementById('share-card'), { scale:3, useCORS:true, backgroundColor:null, logging:false });
+    const link = document.createElement('a');
+    link.download = 'درس-حياة.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('✅ تم حفظ الصورة!');
+  } catch(e) { showToast('❌ فشل تحضير الصورة'); }
+}
+
+async function shareToWhatsApp() {
+  showToast('⏳ جاري تحضير الصورة...');
+  try {
+    const canvas = await html2canvas(document.getElementById('share-card'), { scale:3, useCORS:true, backgroundColor:null, logging:false });
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], 'درس.png', { type:'image/png' });
+      if (navigator.share && navigator.canShare({ files:[file] })) {
+        await navigator.share({ files:[file], title:'درس من دفتر الحياة' });
+      } else {
+        const link = document.createElement('a');
+        link.download = 'درس-حياة.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast('📥 احفظ الصورة وشاركها في واتساب');
+      }
+    }, 'image/png');
+  } catch(e) { showToast('❌ فشل التحضير'); }
+}
+</script>
+
+</body>
+</html>
