@@ -34,18 +34,28 @@ export default function App() {
   const [showReview, setShowReview] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [fbError, setFbError] = useState(false);
+  const [fbErrorMsg, setFbErrorMsg] = useState("");
 
   useEffect(() => {
     if (!currentUser) return;
     setLoading(true);
+    setFbError(false);
     let unsub;
     try {
-      unsub = fbListen((data) => {
-        setLessons(data);
-        setLoading(false);
-      });
+      unsub = fbListen(
+        (data) => {
+          setLessons(data);
+          setLoading(false);
+        },
+        (err) => {
+          setFbError(true);
+          setFbErrorMsg(err?.message || String(err));
+          setLoading(false);
+        }
+      );
     } catch (e) {
       setFbError(true);
+      setFbErrorMsg(e?.message || String(e));
       setLoading(false);
     }
     return () => unsub && unsub();
@@ -151,7 +161,12 @@ export default function App() {
         <div style={{ padding: "8px 18px" }}>
           {fbError && (
             <div style={{ textAlign: "center", padding: 30, color: "var(--red)", fontSize: 13 }}>
-              تعذّر الاتصال بقاعدة البيانات. تحقّق من الاتصال بالإنترنت.
+              <div style={{ marginBottom: 8 }}>تعذّر الاتصال بقاعدة البيانات.</div>
+              {fbErrorMsg && (
+                <div style={{ fontSize: 11, color: "var(--text-muted)", direction: "ltr", wordBreak: "break-word" }}>
+                  {fbErrorMsg}
+                </div>
+              )}
             </div>
           )}
 

@@ -14,15 +14,26 @@ const firebaseConfig = {
 
 let app = null;
 let db = null;
+let settingsApplied = false;
 
 function ensureInit() {
   if (db) return db;
   if (!window.firebase) {
-    throw new Error("Firebase SDK لم يتم تحميله بعد");
+    throw new Error("Firebase SDK لم يتم تحميله بعد (window.firebase غير موجود)");
   }
+  console.log("[firebase] initializing, apps already present:", window.firebase.apps?.length || 0);
   app = window.firebase.apps?.length ? window.firebase.app() : window.firebase.initializeApp(firebaseConfig);
-  window.firebase.firestore().settings({ experimentalForceLongPolling: true, merge: true });
+  console.log("[firebase] app initialized:", app?.name);
   db = window.firebase.firestore();
+  if (!settingsApplied) {
+    try {
+      db.settings({ experimentalForceLongPolling: true, merge: true });
+      settingsApplied = true;
+      console.log("[firebase] firestore settings applied");
+    } catch (e) {
+      console.warn("Firestore settings() skipped:", e.message);
+    }
+  }
   return db;
 }
 
@@ -50,16 +61,19 @@ export async function fbDelete(id) {
   }
 }
 
-export function fbListen(callback) {
+export function fbListen(callback, onError) {
+  console.log("[firebase] fbListen: subscribing to lessons collection");
   return lessonsCol().onSnapshot(
     (snapshot) => {
+      console.log("[firebase] snapshot received, doc count:", snapshot.docs.length);
       const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
       data.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       callback(data);
     },
     (err) => {
-      console.error("lessons error:", err);
-      callback([]);
+      console.error("[firebase] lessons listener error:", err.code, err.message);
+      if (onError) onError(err);
+      else callback([]);
     }
   );
 }
