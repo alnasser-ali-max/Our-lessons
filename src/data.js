@@ -11,6 +11,42 @@ export const CATS = {
   wisdom: { label: "حكمة", emoji: "✨", color: "#D4AF7A" },
 };
 
+// يحوّل قيم التصنيف القديمة (عربية أو بمسميات مختلفة) إلى المفاتيح الجديدة
+// يغطي كل الاحتمالات الشائعة من التطبيق السابق حتى لا تتحول الدروس القديمة كلها إلى "حكمة"
+const CATEGORY_ALIASES = {
+  // عمل / وظيفة
+  "عمل": "work", "العمل": "work", "وظيفة": "work", "work": "work", "Work": "work",
+  // أسرة / عائلة
+  "عائلة": "family", "الأسرة": "family", "أسرة": "family", "family": "family", "Family": "family",
+  // اجتماعي
+  "اجتماعي": "social", "العلاقات": "social", "علاقات": "social", "social": "social", "Social": "social",
+  // صحة
+  "صحة": "health", "الصحة": "health", "صحي": "health", "health": "health", "Health": "health",
+  // مال
+  "مال": "finance", "المال": "finance", "دروس مالية": "finance", "مالية": "finance",
+  "finance": "finance", "Finance": "finance", "money": "finance",
+  // دين
+  "دين": "religion", "الدين": "religion", "ديني": "religion", "إيمان": "religion",
+  "religion": "religion", "Religion": "religion",
+  // تطوير / ذات
+  "تطوير": "self", "تطوير الذات": "self", "ذات": "self", "self": "self", "Self": "self",
+  // حكمة
+  "حكمة": "wisdom", "wisdom": "wisdom", "Wisdom": "wisdom", "عام": "wisdom", "أخرى": "wisdom",
+};
+
+export function normalizeCategory(raw) {
+  if (!raw) return "wisdom";
+  if (CATS[raw]) return raw;
+  const trimmed = String(raw).trim();
+  if (CATEGORY_ALIASES[trimmed]) return CATEGORY_ALIASES[trimmed];
+  // مطابقة بدون حساسية لحالة الأحرف لو القيمة إنجليزية بصيغة مختلفة
+  const lower = trimmed.toLowerCase();
+  for (const key of Object.keys(CATS)) {
+    if (key.toLowerCase() === lower) return key;
+  }
+  return "wisdom";
+}
+
 export const QUOTES = [
   "من تعلّم من تجارب الآخرين وفّر على نفسه كثيراً من الخسائر",
   "الحكمة لا تُورث، تُكتسب بالتجربة والتأمل",
